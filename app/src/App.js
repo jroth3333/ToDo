@@ -1,8 +1,6 @@
 import React, {Component} from 'react';
 import './App.css';
 
-const ReactDOM = require('react-dom');
-
 class App extends Component {
 
     constructor(props) {
@@ -15,6 +13,8 @@ class App extends Component {
         this.handleSubmit = this.handleSubmit.bind(this);
         this.handleNameChange = this.handleNameChange.bind(this);
         this.handleDescriptionChange = this.handleDescriptionChange.bind(this);
+        this.handleCheckboxChange = this.handleCheckboxChange.bind(this);
+        this.handleDelete = this.handleDelete.bind(this);
     }
 
     componentDidMount() {
@@ -22,8 +22,8 @@ class App extends Component {
             {
                 method: "GET"
             }
-            )
-            .then(function(response){
+        )
+            .then(function (response) {
                 return response.json();
             })
             .then((data) => {
@@ -31,6 +31,22 @@ class App extends Component {
                     items: data.items
                 });
             })
+    }
+
+    handleCheckboxChange(id) {
+        fetch("http://localhost:8080/updateStatus?id=" + id,
+            {
+                method: "POST"
+            }
+        )
+        .then(function (response) {
+            return response.json();
+        })
+        .then((data) => {
+            this.setState({
+                items: data.items
+            });
+        });
     }
 
     handleNameChange(event) {
@@ -45,6 +61,22 @@ class App extends Component {
         });
     }
 
+    handleDelete(id) {
+        fetch("http://localhost:8080/deleteItem?id=" + id,
+            {
+                method: "POST"
+            }
+        )
+        .then(function (response) {
+            return response.json();
+        })
+        .then((data) => {
+            this.setState({
+                items: data.items
+            });
+        });
+    }
+
     handleSubmit() {
         fetch("http://localhost:8080/addItem?name=" + this.state.newItemName + '&description=' + this.state.newItemDescription, {method: "POST"});
     }
@@ -55,22 +87,25 @@ class App extends Component {
         let index = 0;
 
         this.state.items.map((item) => {
-
-            if(item.completed === false) {
+            if (item.completed === false) {
                 items.push(
                     <CheckListItem key={index}
                                    id={item.id}
                                    name={item.name}
                                    description={item.description}
-                                   completed={item.completed} />);
+                                   completed={item.completed}
+                                   handleCheckboxChange={this.handleCheckboxChange.bind(this)}
+                                   handleDelete={this.handleDelete.bind(this)}/>);
                 index = index + 1;
-            }else{
+            } else {
                 completedItems.push(
                     <CompletedCheckListItem key={index}
-                                   id={item.id}
-                                   name={item.name}
-                                   description={item.description}
-                                   completed={item.completed}/>);
+                                            id={item.id}
+                                            name={item.name}
+                                            description={item.description}
+                                            completed={item.completed}
+                                            handleCheckboxChange={this.handleCheckboxChange.bind(this)}
+                                            handleDelete={this.handleDelete.bind(this)}/>);
                 index = index + 1;
             }
         });
@@ -84,10 +119,11 @@ class App extends Component {
                         <th id="status">Status</th>
                         <th id="name">Name</th>
                         <th id="description">Description</th>
+                        <th id="delete button"></th>
                     </tr>
                     </thead>
                     <tbody className="tbody">
-                        {items}
+                    {items}
                     </tbody>
                 </table>
 
@@ -98,6 +134,7 @@ class App extends Component {
                         <th id="status">Status</th>
                         <th id="name">Name</th>
                         <th id="description">Description</th>
+                        <th id="delete button"></th>
                     </tr>
                     </thead>
                     <tbody className="tbody">
@@ -109,13 +146,15 @@ class App extends Component {
                 <form onSubmit={this.handleSubmit}>
                     <label>
                         Name:
-                        <input id="newItemName" type="text" value={this.state.newItemName} onChange={this.handleNameChange} required={true} />
+                        <input id="newItemName" type="text" value={this.state.newItemName}
+                               onChange={this.handleNameChange} required={true}/>
                     </label>
                     <label>
                         Description:
-                        <input id="newItemDescription" type="text" value={this.state.newItemDescription} onChange={this.handleDescriptionChange} required={true} />
+                        <input id="newItemDescription" type="text" value={this.state.newItemDescription}
+                               onChange={this.handleDescriptionChange} required={true}/>
                     </label>
-                    <input type="submit" value="Submit" />
+                    <input type="submit" value="Submit"/>
                 </form>
             </div>
         )
@@ -129,23 +168,40 @@ class CheckListItem extends React.Component {
         this.state = {
             completed: this.props.completed
         };
-        this.handleCheckboxChange = this.handleCheckboxChange.bind(this);
+
+        this.changeHandler = this.changeHandler.bind(this);
+        this.deleteHandler = this.deleteHandler.bind(this);
     }
 
-    handleCheckboxChange() {
-        fetch("http://localhost:8080/updateStatus?id=" + this.props.id + '&completed=true',
-            {method: "POST"});
-        this.setState({completed: true});
+    changeHandler() {
+        this.setState({
+            completed: true
+        });
+        this.props.handleCheckboxChange(this.props.id);
+    }
+
+    deleteHandler() {
+        this.setState({
+            deleted: true
+        });
+        this.props.handleDelete(this.props.id)
     }
 
     render() {
         return (
             <tr>
                 <td>
-                    <input id="completed" type="checkbox" checked={this.state.completed ? 'checked' : ''} value={this.state.completed} onChange={this.handleCheckboxChange}/>
+                    <input id="completed" type="checkbox" checked={this.state.completed ? 'checked' : ''}
+                           value={this.state.completed}
+                           onChange={this.changeHandler}/>
                 </td>
                 <td>{this.props.name}</td>
                 <td>{this.props.description}</td>
+                <td>
+                    <button onClick={this.deleteHandler}>
+                        Delete
+                    </button>
+                </td>
             </tr>
         )
     }
@@ -156,25 +212,44 @@ class CompletedCheckListItem extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
-            completed: this.props.completed
+            completed: this.props.completed,
+            deleted: false
         };
-        this.handleCheckboxChange = this.handleCheckboxChange.bind(this);
+
+        this.changeHandler = this.changeHandler.bind(this);
+        this.deleteHandler = this.deleteHandler.bind(this);
     }
 
-    handleCheckboxChange() {
-        fetch("http://localhost:8080/updateStatus?id=" + this.props.id + '&completed=false',
-            {method: "POST"});
-        this.setState({completed: false});
+    changeHandler() {
+        this.setState({
+            completed: false
+        });
+        this.props.handleCheckboxChange(this.props.id);
+
+    }
+
+    deleteHandler() {
+        this.setState({
+            deleted: true
+        });
+        this.props.handleDelete(this.props.id)
     }
 
     render() {
         return (
             <tr>
                 <td>
-                    <input id="completed" type="checkbox" checked={this.state.completed ? 'checked' : ''} value={this.state.completed} onChange={this.handleCheckboxChange}/>
+                    <input id="completed" type="checkbox" checked={this.state.completed ? 'checked' : ''}
+                           value={this.state.completed}
+                           onChange={this.changeHandler}/>
                 </td>
                 <td>{this.props.name}</td>
                 <td>{this.props.description}</td>
+                <td>
+                    <button onClick={this.deleteHandler}>
+                        Delete
+                    </button>
+                </td>
             </tr>
         )
     }

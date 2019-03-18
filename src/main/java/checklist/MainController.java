@@ -39,11 +39,20 @@ public class MainController {
     @CrossOrigin
     @ResponseBody
     @RequestMapping(value = "/updateStatus", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE)
-    public void updateStatus(@RequestParam String id, @RequestParam Boolean completed){
+    public CheckList updateStatus(@RequestParam String id) {
         Optional<Item> item = itemRepository.findById(id);
-        if(item.isPresent()) {
-            item.get().setCompleted(completed);
+        if (item.isPresent()) {
+            item.get().setCompleted(!item.get().getCompleted());
             itemRepository.save(item.get());
         }
+        return getCheckList();
+    }
+
+    @CrossOrigin
+    @ResponseBody
+    @RequestMapping(value = "/deleteItem", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE)
+    public CheckList deleteItem(@RequestParam String id) {
+        itemRepository.deleteById(id);
+        return getCheckList();
     }
 }
